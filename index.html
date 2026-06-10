@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>GG CASE HUB</title>
+
+<style>
+body{
+margin:0;
+background:#0b0f14;
+color:white;
+font-family:Arial;
+padding-top:70px;
+}
+
+/* TOP NAV (як у GGDrop / Standoff стилі) */
+.topbar{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:60px;
+background:#111827;
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:0 20px;
+box-shadow:0 0 15px black;
+}
+
+.brand{
+font-weight:bold;
+color:#00e5ff;
+}
+
+.stats{
+display:flex;
+gap:15px;
+}
+
+.stat{
+background:#1f2937;
+padding:6px 12px;
+border-radius:10px;
+font-weight:bold;
+}
+
+/* MAIN LAYOUT */
+.container{
+max-width:900px;
+margin:auto;
+}
+
+/* CARDS */
+.card{
+background:#1c2430;
+padding:15px;
+margin:10px;
+border-radius:12px;
+box-shadow:0 0 10px rgba(0,0,0,0.5);
+}
+
+button{
+background:#00e5ff;
+border:none;
+padding:10px;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+margin:5px;
+color:black;
+}
+
+input{
+padding:8px;
+border-radius:8px;
+border:none;
+width:80%;
+}
+
+/* SKIN */
+#skinImg{
+width:180px;
+display:none;
+margin:10px auto;
+border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+<div class="brand">🎮 GG CASE HUB</div>
+<div class="stats">
+<div class="stat">💰 <span id="bal">0</span></div>
+<div class="stat">⭐ LVL <span id="lvl">0</span></div>
+</div>
+</div>
+
+<div class="container">
+
+<div class="card">
+<h3>👤 PROFILE</h3>
+<input id="name" placeholder="nickname">
+<button onclick="login()">LOGIN</button>
+</div>
+
+<div class="card">
+<h3>🎰 CASE OPEN</h3>
+<img id="skinImg">
+<div id="dropText">Open case to get skin</div>
+<button onclick="openCase()">OPEN (-100)</button>
+</div>
+
+<div class="card">
+<h3>🎒 INVENTORY</h3>
+<div id="inv"></div>
+</div>
+
+<div class="card">
+<h3>🏆 TOP PLAYERS</h3>
+<div id="board"></div>
+</div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+ apiKey: "AIzaSyA_uufcZcnIv7JVD1dwUGCu2okfz5J-VQw",
+ authDomain: "gg-case-server.firebaseapp.com",
+ projectId: "gg-case-server",
+ storageBucket: "gg-case-server.firebasestorage.app",
+ messagingSenderId: "616600643525",
+ appId: "1:616600643525:web:8594511edc2ae576760dac"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let user="";
+
+/* LOGIN */
+window.login=async function(){
+user=document.getElementById("name").value;
+
+let ref=doc(db,"players",user);
+let s=await getDoc(ref);
+
+if(!s.exists()){
+await setDoc(ref,{balance:300,level:1,inv:[]});
+}
+
+load();
+top();
+}
+
+/* LOAD */
+async function load(){
+let s=await getDoc(doc(db,"players",user));
+let d=s.data();
+document.getElementById("bal").innerText=d.balance;
+document.getElementById("lvl").innerText=d.level;
+
+/* INVENTORY */
+document.getElementById("inv").innerHTML =
+(d.inv||[]).map(i=>`🧩 ${i.name}`).join("<br>");
+}
+
+/* CASE */
+window.openCase=async function(){
+
+let ref=doc(db,"players",user);
+let s=await getDoc(ref);
+let d=s.data();
+
+if(d.balance<100)return;
+
+let skins=[
+{name:"AK-Redline",img:"https://i.imgur.com/1Q9Z1ZP.png",value:150},
+{name:"M4-Asiimov",img:"https://i.imgur.com/8Q2Z1Xk.png",value:250},
+{name:"Knife Doppler",img:"https://i.imgur.com/3mX1v9A.png",value:500}
+];
+
+let drop=skins[Math.floor(Math.random()*skins.length)];
+
+/* UI */
+document.getElementById("skinImg").src=drop.img;
+document.getElementById("skinImg").style.display="block";
+document.getElementById("dropText").innerText=drop.name;
+
+/* SAVE INVENTORY */
+let inv=d.inv||[];
+inv.push(drop);
+
+/* UPDATE */
+await updateDoc(ref,{
+balance:d.balance-100+drop.value,
+inv:inv
+});
+
+load();top();
+}
+
+/* TOP */
+async function top(){
+let snap=await getDocs(collection(db,"players"));
+let arr=[];
+snap.forEach(d=>arr.push({name:d.id,...d.data()}));
+arr.sort((a,b)=>b.balance-a.balance);
+
+document.getElementById("board").innerHTML=
+arr.slice(0,10).map((p,i)=>`${i+1}. ${p.name} 💰${p.balance}`).join("<br>");
+}
+
+</script>
+
+</body>
+</html>
