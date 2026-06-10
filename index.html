@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>GG CASE ULTRA ROULETTE</title>
+
+<style>
+body{
+margin:0;
+background:#070b14;
+color:white;
+font-family:Arial;
+padding-top:70px;
+text-align:center;
+}
+
+/* TOP */
+.topbar{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:60px;
+background:#0f172a;
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:0 20px;
+box-shadow:0 0 20px black;
+}
+
+.brand{color:#00d9ff;font-weight:bold}
+.stats{display:flex;gap:10px}
+.stat{background:#1e293b;padding:6px 10px;border-radius:10px}
+
+/* LAYOUT */
+.container{max-width:900px;margin:auto}
+
+.card{
+background:#111827;
+margin:12px;
+padding:15px;
+border-radius:12px;
+box-shadow:0 0 10px black;
+}
+
+/* BUTTONS */
+button{
+background:#00d9ff;
+border:none;
+padding:10px;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+color:black;
+}
+
+input{
+padding:8px;
+border-radius:8px;
+border:none;
+width:80%;
+}
+
+/* ROULETTE */
+.rouletteWindow{
+overflow:hidden;
+width:320px;
+margin:auto;
+border:2px solid #00d9ff;
+border-radius:10px;
+background:#0f172a;
+}
+
+#strip{
+display:flex;
+transition:transform 3s cubic-bezier(.1,.8,.2,1);
+}
+
+.item{
+min-width:100px;
+text-align:center;
+padding:10px;
+}
+
+.item img{
+width:80px;
+border-radius:8px;
+}
+
+/* CASE PREVIEW */
+.caseItem{
+display:flex;
+justify-content:space-between;
+align-items:center;
+background:#0f172a;
+padding:8px;
+margin:5px 0;
+border-radius:8px;
+}
+
+.caseItem img{
+width:40px;
+border-radius:6px;
+}
+
+/* INVENTORY SKINS */
+.invItem{
+font-size:14px;
+margin:3px 0;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+<div class="brand">🎮 GG CASE ULTRA</div>
+<div class="stats">
+<div class="stat">💰 <span id="bal">0</span></div>
+<div class="stat">⭐ LVL <span id="lvl">0</span></div>
+</div>
+</div>
+
+<div class="container">
+
+<div class="card">
+<h3>👤 PROFILE</h3>
+<input id="name" placeholder="nickname">
+<button onclick="login()">LOGIN</button>
+</div>
+
+<div class="card">
+<h3>🎰 CASE ROULETTE</h3>
+
+<div class="rouletteWindow">
+<div id="strip"></div>
+</div>
+
+<div id="dropText">Press OPEN</div>
+<button onclick="openCase()">OPEN (-100)</button>
+</div>
+
+<div class="card">
+<h3>📦 CASE CONTENT</h3>
+<div id="caseContent"></div>
+</div>
+
+<div class="card">
+<h3>🎒 INVENTORY</h3>
+<div id="inv"></div>
+</div>
+
+<div class="card">
+<h3>🏆 TOP</h3>
+<div id="board"></div>
+</div>
+
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyA_uufcZcnIv7JVD1dwUGCu2okfz5J-VQw",
+authDomain:"gg-case-server.firebaseapp.com",
+projectId:"gg-case-server",
+storageBucket:"gg-case-server.firebasestorage.app",
+messagingSenderId:"616600643525",
+appId:"1:616600643525:web:8594511edc2ae576760dac"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+let user="";
+
+/* SKINS */
+let skins=[
+{name:"AK Redline",img:"https://i.imgur.com/1Q9Z1ZP.png",value:150,rarity:"rare"},
+{name:"M4 Asiimov",img:"https://i.imgur.com/8Q2Z1Xk.png",value:250,rarity:"epic"},
+{name:"Knife Doppler",img:"https://i.imgur.com/3mX1v9A.png",value:500,rarity:"legendary"}
+];
+
+/* LOGIN */
+window.login=async function(){
+user=document.getElementById("name").value;
+
+let r=doc(db,"players",user);
+let s=await getDoc(r);
+
+if(!s.exists()){
+await setDoc(r,{balance:300,level:1,inv:[]});
+}
+
+load();
+top();
+showCaseContent();
+}
+
+/* LOAD */
+async function load(){
+let s=await getDoc(doc(db,"players",user));
+let d=s.data();
+
+document.getElementById("bal").innerText=d.balance;
+document.getElementById("lvl").innerText=d.level;
+
+document.getElementById("inv").innerHTML =
+(d.inv||[]).map(i=>`🧩 ${i.name}`).join("<br>");
+}
+
+/* BUILD ROULETTE */
+function buildStrip(){
+let strip=document.getElementById("strip");
+strip.innerHTML="";
+
+let pool=[];
+for(let i=0;i<20;i++) pool=pool.concat(skins);
+
+pool.forEach(s=>{
+let div=document.createElement("div");
+div.className="item";
+div.innerHTML=`<img src="${s.img}">`;
+strip.appendChild(div);
+});
+}
+
+/* CASE OPEN */
+window.openCase=async function(){
+
+let r=doc(db,"players",user);
+let s=await getDoc(r);
+let d=s.data();
+
+if(d.balance<100)return;
+
+buildStrip();
+
+/* pick result */
+let index=Math.floor(Math.random()*skins.length);
+
+/* smooth stop */
+let offset=-(index*100 + 900);
+
+document.getElementById("strip").style.transform=
+`translateX(${offset}px)`;
+
+/* wait animation */
+setTimeout(async()=>{
+
+let drop=skins[index];
+
+document.getElementById("dropText").innerText=
+"YOU GOT: "+drop.name;
+
+/* inventory */
+let inv=d.inv||[];
+inv.push(drop);
+
+/* update */
+await updateDoc(r,{
+balance:d.balance-100+drop.value,
+inv:inv
+});
+
+load();top();
+
+},3200);
+}
+
+/* CASE CONTENT */
+function showCaseContent(){
+document.getElementById("caseContent").innerHTML=
+skins.map(s=>`
+<div class="caseItem">
+<img src="${s.img}">
+<div>${s.name}</div>
+<div>${s.rarity}</div>
+</div>
+`).join("");
+}
+
+/* TOP */
+async function top(){
+let snap=await getDocs(collection(db,"players"));
+let arr=[];
+snap.forEach(d=>arr.push({name:d.id,...d.data()}));
+arr.sort((a,b)=>b.balance-a.balance);
+
+document.getElementById("board").innerHTML=
+arr.slice(0,10).map((p,i)=>
+`${i+1}. ${p.name} 💰${p.balance}`
+).join("<br>");
+}
+
+</script>
+
+</body>
+</html>
