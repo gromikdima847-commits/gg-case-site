@@ -1,1 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>GG Case Site</title>
+</head>
 
+<body style="background:#0b0b14;color:white;text-align:center;font-family:Arial;">
+
+<h1>🎰 GG CASE GAME</h1>
+
+<div>💰 Баланс: <span id="bal">100</span></div>
+
+<button onclick="openCase()" style="padding:10px;background:#7c4dff;color:white;border:none;border-radius:10px;">
+Відкрити кейс
+</button>
+
+<h2 id="result">Натисни кнопку</h2>
+
+<script>
+
+let balance = 100;
+
+function openCase(){
+
+  if(balance < 10){
+    document.getElementById("result").innerText = "Нема грошей 😄";
+    return;
+  }
+
+  balance -= 10;
+
+  let items = ["AKR", "M4", "AWP", "Knife"];
+  let drop = items[Math.floor(Math.random()*items.length)];
+
+  document.getElementById("bal").innerText = balance;
+  document.getElementById("result").innerText = "Ти вибив: " + drop;
+}
+
+</script>
+
+</body>
+</html>
