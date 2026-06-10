@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>GG STANDOFF HUB</title>
+
+<style>
+body{
+margin:0;
+background:#0b1220;
+color:white;
+font-family:Arial;
+padding-top:70px;
+text-align:center;
+}
+
+/* TOP */
+.topbar{
+position:fixed;
+top:0;left:0;
+width:100%;
+height:60px;
+background:#0f172a;
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:0 20px;
+box-shadow:0 0 20px black;
+}
+
+.brand{color:#00e5ff;font-weight:bold}
+.stat{background:#1e293b;padding:6px 10px;border-radius:8px}
+
+/* UI */
+.container{max-width:900px;margin:auto}
+
+.card{
+background:#111827;
+margin:12px;
+padding:15px;
+border-radius:12px;
+transition:0.2s;
+}
+
+.card:hover{
+transform:scale(1.01);
+}
+
+button{
+background:#00e5ff;
+border:none;
+padding:10px;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+color:black;
+transition:0.2s;
+}
+
+button:hover{
+transform:scale(1.05);
+}
+
+button:disabled{
+background:#444;
+cursor:not-allowed;
+transform:none;
+}
+
+input{
+padding:8px;
+border-radius:8px;
+border:none;
+width:80%;
+}
+
+/* MESSAGE SYSTEM */
+#msg{
+position:fixed;
+bottom:20px;
+left:50%;
+transform:translateX(-50%);
+background:#000000cc;
+padding:10px 20px;
+border-radius:10px;
+display:none;
+}
+
+/* CASE */
+#skinImg{
+width:180px;
+display:none;
+margin:10px auto;
+border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+<div class="brand">🎮 STANDOFF HUB</div>
+<div>
+💰 <span class="stat" id="bal">0</span>
+⭐ <span class="stat" id="lvl">0</span>
+</div>
+</div>
+
+<div class="container">
+
+<div class="card">
+<h3>👤 LOGIN</h3>
+<input id="name" placeholder="nickname">
+<button id="loginBtn" onclick="login()">LOGIN</button>
+</div>
+
+<div class="card">
+<h3>🎰 CASE SYSTEM</h3>
+<img id="skinImg">
+<div id="dropText">Not logged in</div>
+<button id="caseBtn" onclick="openCase()" disabled>OPEN CASE (-100)</button>
+</div>
+
+<div class="card">
+<h3>🎒 INVENTORY</h3>
+<div id="inv"></div>
+</div>
+
+</div>
+
+<div id="msg"></div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig={
+apiKey:"AIzaSyA_uufcZcnIv7JVD1dwUGCu2okfz5J-VQw",
+authDomain:"gg-case-server.firebaseapp.com",
+projectId:"gg-case-server",
+storageBucket:"gg-case-server.firebasestorage.app",
+messagingSenderId:"616600643525",
+appId:"1:616600643525:web:8594511edc2ae576760dac"
+};
+
+const app=initializeApp(firebaseConfig);
+const db=getFirestore(app);
+
+let user="";
+let logged=false;
+let cooldown=false;
+
+/* SKINS */
+let skins=[
+{name:"AK Redline",img:"https://i.imgur.com/1Q9Z1ZP.png",value:150},
+{name:"M4 Asiimov",img:"https://i.imgur.com/8Q2Z1Xk.png",value:250},
+{name:"Knife Doppler",img:"https://i.imgur.com/3mX1v9A.png",value:500}
+];
+
+/* MESSAGE */
+function msg(text){
+let m=document.getElementById("msg");
+m.innerText=text;
+m.style.display="block";
+setTimeout(()=>m.style.display="none",2000);
+}
+
+/* LOGIN */
+window.login=async function(){
+user=document.getElementById("name").value;
+
+if(!user)return msg("Enter nickname");
+
+let r=doc(db,"players",user);
+let s=await getDoc(r);
+
+if(!s.exists()){
+await setDoc(r,{balance:300,level:1,inv:[]});
+}
+
+logged=true;
+
+document.getElementById("caseBtn").disabled=false;
+
+load();
+msg("Logged in");
+}
+
+/* LOAD */
+async function load(){
+let s=await getDoc(doc(db,"players",user));
+let d=s.data();
+
+document.getElementById("bal").innerText=d.balance;
+document.getElementById("lvl").innerText=d.level;
+
+document.getElementById("inv").innerHTML=
+(d.inv||[]).map(i=>"🧩 "+i.name).join("<br>");
+}
+
+/* CASE */
+window.openCase=async function(){
+
+if(!logged) return msg("Login first");
+if(cooldown) return msg("Wait cooldown");
+
+let r=doc(db,"players",user);
+let s=await getDoc(r);
+let d=s.data();
+
+if(d.balance<100) return msg("Not enough money");
+
+cooldown=true;
+document.getElementById("caseBtn").disabled=true;
+
+setTimeout(()=>{
+cooldown=false;
+document.getElementById("caseBtn").disabled=false;
+},2500);
+
+let drop=skins[Math.floor(Math.random()*skins.length)];
+
+document.getElementById("skinImg").src=drop.img;
+document.getElementById("skinImg").style.display="block";
+document.getElementById("dropText").innerText="You got: "+drop.name;
+
+let inv=d.inv||[];
+inv.push(drop);
+
+await updateDoc(r,{
+balance:d.balance-100+drop.value,
+inv:inv
+});
+
+load();
+msg("Case opened!");
+}
+
+</script>
+
+</body>
+</html>
