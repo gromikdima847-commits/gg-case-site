@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>GG CASE IMBA</title>
+
+<style>
+body{
+margin:0;
+background:#0a0a0a;
+color:white;
+font-family:Arial;
+padding-top:70px;
+text-align:center;
+}
+
+/* TOP BAR */
+.topbar{
+position:fixed;
+top:0;
+left:0;
+width:100%;
+height:60px;
+background:#141414;
+display:flex;
+justify-content:space-between;
+align-items:center;
+padding:0 20px;
+box-shadow:0 0 10px black;
+}
+
+.balance{
+color:#ffd700;
+font-weight:bold;
+}
+
+/* BOX */
+.box{
+width:360px;
+margin:15px auto;
+background:#1c1c1c;
+padding:15px;
+border-radius:12px;
+}
+
+button{
+background:#ffcc00;
+border:none;
+padding:10px;
+border-radius:8px;
+cursor:pointer;
+font-weight:bold;
+margin:4px;
+}
+
+input{
+padding:8px;
+border-radius:8px;
+border:none;
+width:80%;
+}
+
+#skinImg{
+width:200px;
+display:none;
+margin:10px auto;
+border-radius:10px;
+box-shadow:0 0 10px black;
+}
+</style>
+</head>
+
+<body>
+
+<!-- TOP -->
+<div class="topbar">
+<div>🌐 GG CASE IMBA</div>
+<div class="balance">💰 <span id="bal">0</span> | 🧑‍🚀 LVL <span id="lvl">0</span></div>
+</div>
+
+<h2>🎰 GG CASE ONLINE</h2>
+
+<div class="box">
+👤 Ник: <input id="name">
+<button onclick="login()">Войти</button>
+</div>
+
+<div class="box">
+<img id="skinImg">
+<div id="dropText">Нажми открыть кейс</div>
+<button onclick="openCase()">🎰 Open Case (-100)</button>
+</div>
+
+<div class="box">
+🎁 Promo: <input id="promo">
+<button onclick="promo()">Activate</button>
+</div>
+
+<div class="box">
+🔐 Admin key<br>
+<input id="adminKey">
+<button onclick="adminLogin()">Login</button>
+</div>
+
+<div class="box" id="adminPanel" style="display:none">
+<h3>ADMIN PANEL</h3>
+User: <input id="target"><br>
+Money: <input id="money"><br>
+<button onclick="give()">Give money</button>
+</div>
+
+<div class="box">
+<h3>🏆 TOP</h3>
+<div id="board"></div>
+</div>
+
+<script type="module">
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, getDocs } 
+from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyA_uufcZcnIv7JVD1dwUGCu2okfz5J-VQw",
+  authDomain: "gg-case-server.firebaseapp.com",
+  projectId: "gg-case-server",
+  storageBucket: "gg-case-server.firebasestorage.app",
+  messagingSenderId: "616600643525",
+  appId: "1:616600643525:web:8594511edc2ae576760dac"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+let user="";
+let admin=false;
+
+/* LOGIN */
+window.login=async function(){
+user=document.getElementById("name").value;
+
+let ref=doc(db,"players",user);
+let s=await getDoc(ref);
+
+if(!s.exists()){
+await setDoc(ref,{balance:300,level:1,spent:0});
+}
+
+load();
+top();
+}
+
+/* LOAD */
+async function load(){
+let s=await getDoc(doc(db,"players",user));
+let d=s.data();
+document.getElementById("bal").innerText=d.balance;
+document.getElementById("lvl").innerText=d.level;
+}
+
+/* CASE */
+window.openCase=async function(){
+
+let ref=doc(db,"players",user);
+let s=await getDoc(ref);
+let d=s.data();
+
+if(d.balance<100){
+alert("no money");
+return;
+}
+
+let skins=[
+{img:"https://i.imgur.com/1Q9Z1ZP.png",name:"AK-47 Redline",value:150},
+{img:"https://i.imgur.com/8Q2Z1Xk.png",name:"M4A4 Asiimov",value:250},
+{img:"https://i.imgur.com/3mX1v9A.png",name:"Knife Doppler",value:500},
+{img:"https://i.imgur.com/7gH2k9R.png",name:"AWP Dragon Lore",value:800}
+];
+
+let drop=skins[Math.floor(Math.random()*skins.length)];
+
+document.getElementById("skinImg").src=drop.img;
+document.getElementById("skinImg").style.display="block";
+document.getElementById("dropText").innerText=drop.name;
+
+await updateDoc(ref,{
+balance:d.balance-100+drop.value,
+spent:d.spent+100
+});
+
+load();top();
+}
+
+/* PROMO */
+window.promo=function(){
+let p=document.getElementById("promo").value;
+let add=0;
+if(p=="FREE100")add=100;
+if(p=="IMBA")add=500;
+update("balance",add);
+}
+
+/* ADMIN */
+window.adminLogin=function(){
+if(document.getElementById("adminKey").value==="1234"){
+admin=true;
+document.getElementById("adminPanel").style.display="block";
+}
+}
+
+window.give=async function(){
+if(!admin)return;
+let t=document.getElementById("target").value;
+let m=parseInt(document.getElementById("money").value);
+
+let r=doc(db,"players",t);
+let s=await getDoc(r);
+let d=s.data();
+
+await updateDoc(r,{balance:d.balance+m});
+}
+
+/* TOP */
+async function top(){
+let snap=await getDocs(collection(db,"players"));
+let arr=[];
+snap.forEach(d=>arr.push({name:d.id,...d.data()}));
+arr.sort((a,b)=>b.balance-a.balance);
+
+document.getElementById("board").innerHTML=
+arr.slice(0,10).map((p,i)=>`${i+1}. ${p.name} 💰${p.balance}`).join("<br>");
+}
+
+/* helper */
+async function update(field,val){
+let r=doc(db,"players",user);
+let s=await getDoc(r);
+let d=s.data();
+let obj={};
+obj[field]=d[field]+val;
+await updateDoc(r,obj);
+load();top();
+}
+
+</script>
+
+</body>
+  </html>
